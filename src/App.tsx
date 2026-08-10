@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import type { Session } from "@supabase/supabase-js";
-import { CalendarDays, FolderKanban, GripVertical, LayoutGrid, LogOut, Plus, Users } from "lucide-react";
+import { CalendarDays, FolderKanban, GripVertical, LayoutGrid, LogOut, Plus, Table2, Users } from "lucide-react";
 import { supabase } from "./supabaseClient";
 import type { Conge, Designer, Filters, Meeting, PrioriteId, Project, StatusId, Subtask, Task, TaskDraft, TaskRow } from "./types";
 import { PROJECT_COLORS } from "./constants";
@@ -14,14 +14,16 @@ import SprintsView from "./components/SprintsView";
 import CalendarView from "./components/CalendarView";
 import TeamView from "./components/TeamView";
 import ProjectsView from "./components/ProjectsView";
+import AllocationView from "./components/AllocationView";
 
-type ViewId = "kanban" | "sprints" | "calendrier" | "projets" | "equipe";
+type ViewId = "kanban" | "sprints" | "calendrier" | "projets" | "repartition" | "equipe";
 
 const TABS: { id: ViewId; label: string; icon: typeof LayoutGrid }[] = [
   { id: "kanban", label: "Kanban", icon: LayoutGrid },
   { id: "sprints", label: "Sprints", icon: GripVertical },
   { id: "calendrier", label: "Calendrier", icon: CalendarDays },
   { id: "projets", label: "Projets", icon: FolderKanban },
+  { id: "repartition", label: "Répartition", icon: Table2 },
   { id: "equipe", label: "Équipe", icon: Users },
 ];
 
@@ -409,6 +411,7 @@ export default function App() {
           {view === "projets" && (
             <ProjectsView tasks={tasks} designers={designers} projects={projects} onAddProject={addProject} onRenameProject={renameProject} onSetProjectPriority={setProjectPriority} onEdit={openEdit} readOnly={readOnly} />
           )}
+          {view === "repartition" && <AllocationView tasks={tasks} designers={designers} projects={projects} onEdit={openEdit} />}
           {view === "equipe" && <TeamView tasks={tasks} designers={designers} meetings={meetings} conges={conges} onRenameDesigner={renameDesigner} readOnly={readOnly} />}
         </>
       )}
