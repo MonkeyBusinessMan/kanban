@@ -2,6 +2,7 @@ import { X } from "lucide-react";
 import type { Designer, Project, Task } from "../types";
 import { STATUSES } from "../constants";
 import { fmtShort } from "../dateUtils";
+import { roundCharge } from "../capacity";
 import { AvatarStack, DifficultyBadge, PriorityDot } from "./atoms";
 
 export default function ProjectPanel({
@@ -17,7 +18,7 @@ export default function ProjectPanel({
   onClose: () => void;
   onEditTask: (task: Task) => void;
 }) {
-  const charge = tasks.reduce((s, t) => s + (t.charge || 0), 0);
+  const charge = roundCharge(tasks.reduce((s, t) => s + (t.charge || 0), 0));
   const sorted = [...tasks].sort((a, b) => (a.date_livraison || "").localeCompare(b.date_livraison || ""));
 
   return (

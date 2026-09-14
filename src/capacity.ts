@@ -2,10 +2,15 @@ import type { Conge, Meeting, Task } from "./types";
 import { CAPACITY_PER_DESIGNER } from "./constants";
 import { addDays, toISODate } from "./dateUtils";
 
+/** Arrondit une charge (jours) à 2 décimales maximum. */
+export function roundCharge(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
 /** Une tâche assignée à plusieurs designers répartit sa charge à parts égales entre eux. */
 export function taskShare(task: Task): number {
   const n = task.designer_ids.length || 1;
-  return task.charge / n;
+  return roundCharge(task.charge / n);
 }
 
 /**
@@ -27,13 +32,14 @@ export function taskSprints(task: Task): string[] {
 }
 
 export function taskChargeForDesignerInSprint(tasks: Task[], designerId: string, sprint: string): number {
-  return tasks
+  const total = tasks
     .filter((t) => t.designer_ids.includes(designerId) && !t.is_epic)
     .reduce((s, t) => {
       const sprints = taskSprints(t);
       if (!sprints.includes(sprint)) return s;
       return s + taskShare(t) / sprints.length;
     }, 0);
+  return roundCharge(total);
 }
 
 export function meetingChargeForDesignerInSprint(meetings: Meeting[], designerId: string, sprint: string): number {
@@ -50,7 +56,7 @@ export function congeChargeForDesignerInSprint(conges: Conge[], designerId: stri
 
 /** Les réunions et les congés réduisent la capacité disponible du designer pour ce sprint. */
 export function effectiveCapacity(meetingCharge: number, congeCharge = 0): number {
-  return Math.max(0, CAPACITY_PER_DESIGNER - meetingCharge - congeCharge);
+  return roundCharge(Math.max(0, CAPACITY_PER_DESIGNER - meetingCharge - congeCharge));
 }
 
 export function subtaskProgress(task: Task): { done: number; total: number; pct: number } {
