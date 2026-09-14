@@ -66,7 +66,7 @@ export default function KanbanView({
         )}
       </div>
 
-      <div className="studio-board">
+      <div className="studio-board" style={{ gridTemplateColumns: `repeat(${STATUSES.length}, minmax(220px, 1fr))` }}>
         {STATUSES.map((status) => {
           const col = filtered
             .filter((t) => t.statut === status.id)
