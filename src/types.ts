@@ -1,4 +1,4 @@
-export type StatusId = "backlog" | "cadrage" | "encours" | "revision" | "livre";
+export type StatusId = "backlog" | "cadrage" | "encours" | "attente" | "revision" | "livre";
 export type PrioriteId = "haute" | "moyenne" | "basse";
 export type DifficulteId = "XS" | "S" | "M" | "L" | "XL" | "XXL";
 
