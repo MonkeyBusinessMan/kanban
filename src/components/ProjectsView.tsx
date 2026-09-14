@@ -5,6 +5,7 @@ import type { Designer, PrioriteId, Project, Task } from "../types";
 import { PRIORITIES, STATUSES } from "../constants";
 import { Avatar, PriorityDot } from "./atoms";
 import ProjectPanel from "./ProjectPanel";
+import { roundCharge } from "../capacity";
 
 const STATUS_COLORS = ["#8B5E3C", "#B8862B", "#4F6D7A", "#A9762B", "#6B5B95", "#557153"];
 
@@ -166,7 +167,7 @@ export default function ProjectsView({
             {items.map((p) => {
               const pTasks = tasks.filter((t) => t.projet_id === p.id);
               const active = pTasks.filter((t) => t.statut !== "livre");
-              const charge = active.reduce((s, t) => s + (t.charge || 0), 0);
+              const charge = roundCharge(active.reduce((s, t) => s + (t.charge || 0), 0));
               const involved = [...new Set(active.flatMap((t) => t.designer_ids))]
                 .map((id) => designers.find((d) => d.id === id))
                 .filter((d): d is Designer => !!d);

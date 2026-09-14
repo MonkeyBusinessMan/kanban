@@ -2,7 +2,7 @@ import { AlertTriangle, GripVertical, Layers } from "lucide-react";
 import type { Designer, Project, Task } from "../types";
 import { PRIORITIES } from "../constants";
 import { fmtShort } from "../dateUtils";
-import { taskShare, subtaskProgress, epicProgress } from "../capacity";
+import { taskShare, subtaskProgress, epicProgress, roundCharge } from "../capacity";
 import { AvatarStack, DifficultyBadge, ProgressBar, ProjectTag } from "./atoms";
 
 export default function TaskCard({
@@ -28,6 +28,7 @@ export default function TaskCard({
   const assigned = task.designer_ids.map((id) => designers.find((d) => d.id === id));
   const progress = task.is_epic ? epicProgress(task, allTasks) : subtaskProgress(task);
   const share = taskShare(task);
+  const charge = roundCharge(task.charge);
 
   return (
     <div
@@ -63,7 +64,7 @@ export default function TaskCard({
         <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
           <AvatarStack designers={assigned} size={24} />
           <span style={{ fontSize: 12, fontFamily: "var(--font-mono)", color: "var(--text-secondary)" }}>
-            {share === task.charge ? `${task.charge}j` : `${share}j / ${task.charge}j`}
+            {share === charge ? `${charge}j` : `${share}j / ${charge}j`}
           </span>
         </div>
         <div

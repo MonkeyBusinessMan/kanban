@@ -1,6 +1,6 @@
 import { Bar, CartesianGrid, ComposedChart, Legend, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { Conge, Designer, DifficulteId, Meeting, Task } from "../types";
-import { taskChargeForDesignerInSprint, taskShare, taskSprints, meetingChargeForDesignerInSprint, congeChargeForDesignerInSprint, effectiveCapacity } from "../capacity";
+import { taskChargeForDesignerInSprint, taskShare, taskSprints, meetingChargeForDesignerInSprint, congeChargeForDesignerInSprint, effectiveCapacity, roundCharge } from "../capacity";
 import { DIFFICULTIES } from "../constants";
 import { getMonday, sprintLabel, toISODate } from "../dateUtils";
 import { Avatar } from "./atoms";
@@ -58,7 +58,7 @@ export default function TeamView({
               formatter={(v: number, key: string) => {
                 if (key === "capacité") return [`${v} j`, "Capacité"];
                 const diff = DIFFICULTIES.find((d) => d.id === key);
-                return [`${Math.round(v * 10) / 10} j`, diff ? `${diff.id} — ${diff.label}` : "Sans difficulté"];
+                return [`${roundCharge(v)} j`, diff ? `${diff.id} — ${diff.label}` : "Sans difficulté"];
               }}
             />
             <Legend

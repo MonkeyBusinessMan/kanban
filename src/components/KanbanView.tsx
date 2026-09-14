@@ -2,6 +2,7 @@ import { Search, X } from "lucide-react";
 import type { Designer, Filters, Project, StatusId, Task } from "../types";
 import { PRIORITIES, STATUSES } from "../constants";
 import { toISODate } from "../dateUtils";
+import { roundCharge } from "../capacity";
 import TaskCard from "./TaskCard";
 
 const EMPTY_FILTERS: Filters = { designerId: "all", projetId: "all", priorite: "all", epic: "all", search: "" };
@@ -71,7 +72,7 @@ export default function KanbanView({
           const col = filtered
             .filter((t) => t.statut === status.id)
             .sort((a, b) => (a.date_livraison || "").localeCompare(b.date_livraison || ""));
-          const chargeSum = col.reduce((s, t) => s + (t.charge || 0), 0);
+          const chargeSum = roundCharge(col.reduce((s, t) => s + (t.charge || 0), 0));
           return (
             <div
               key={status.id}
