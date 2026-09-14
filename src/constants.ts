@@ -4,6 +4,7 @@ export const STATUSES: { id: StatusId; label: string }[] = [
   { id: "backlog", label: "Backlog" },
   { id: "cadrage", label: "Cadrage" },
   { id: "encours", label: "En cours" },
+  { id: "attente", label: "En attente" },
   { id: "revision", label: "Révision" },
   { id: "livre", label: "Livré" },
 ];

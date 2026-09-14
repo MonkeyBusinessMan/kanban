@@ -6,7 +6,7 @@ import { PRIORITIES, STATUSES } from "../constants";
 import { Avatar, PriorityDot } from "./atoms";
 import ProjectPanel from "./ProjectPanel";
 
-const STATUS_COLORS = ["#8B5E3C", "#B8862B", "#4F6D7A", "#6B5B95", "#557153"];
+const STATUS_COLORS = ["#8B5E3C", "#B8862B", "#4F6D7A", "#A9762B", "#6B5B95", "#557153"];
 
 export default function ProjectsView({
   tasks, designers, projects, onAddProject, onRenameProject, onSetProjectPriority, onEdit, readOnly,
