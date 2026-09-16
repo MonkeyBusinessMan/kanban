@@ -116,21 +116,22 @@ export default function TaskModal({
         <fieldset disabled={readOnly} style={{ border: "none", padding: 0, margin: 0, display: "contents" }}>
           <label className="studio-field">
             <span>Projet(s)</span>
+            <MultiSelect
+              options={[...projects].sort((a, b) => a.name.localeCompare(b.name, "fr")).map((p) => ({ id: p.id, label: p.name, color: p.color }))}
+              selected={form.projet_ids}
+              onToggle={(id) => toggleIn("projet_ids", id)}
+            />
             {!addingProject ? (
-              <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
-                <div style={{ flex: 1 }}>
-                  <MultiSelect
-                    options={[...projects].sort((a, b) => a.name.localeCompare(b.name, "fr")).map((p) => ({ id: p.id, label: p.name, color: p.color }))}
-                    selected={form.projet_ids}
-                    onToggle={(id) => toggleIn("projet_ids", id)}
-                  />
-                </div>
-                <button type="button" onClick={() => setAddingProject(true)} className="studio-icon-btn" title="Ajouter un projet">
-                  <Plus size={15} />
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => setAddingProject(true)}
+                className="studio-btn-ghost"
+                style={{ alignSelf: "flex-start", display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11.5, padding: "6px 10px", marginTop: 2 }}
+              >
+                <Plus size={13} /> Nouveau projet
+              </button>
             ) : (
-              <div style={{ display: "flex", gap: 8 }}>
+              <div style={{ display: "flex", gap: 8, marginTop: 2 }}>
                 <input
                   autoFocus
                   placeholder="Nom du nouveau projet"
