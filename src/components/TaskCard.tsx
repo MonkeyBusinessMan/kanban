@@ -3,13 +3,13 @@ import type { Designer, Project, Task } from "../types";
 import { PRIORITIES } from "../constants";
 import { fmtShort } from "../dateUtils";
 import { taskShare, subtaskProgress, epicProgress, roundCharge } from "../capacity";
-import { AvatarStack, DifficultyBadge, ProgressBar, ProjectTag } from "./atoms";
+import { AvatarStack, DifficultyBadge, ProgressBar, ProjectTags } from "./atoms";
 
 export default function TaskCard({
   task,
   allTasks,
   designers,
-  project,
+  taskProjects,
   onEdit,
   onDragStart,
   readOnly,
@@ -18,7 +18,7 @@ export default function TaskCard({
   task: Task;
   allTasks: Task[];
   designers: Designer[];
-  project?: Project | null;
+  taskProjects: Project[];
   onEdit: (task: Task) => void;
   onDragStart: (e: React.DragEvent, id: string) => void;
   readOnly: boolean;
@@ -49,7 +49,7 @@ export default function TaskCard({
             <Layers size={10} /> Epic
           </span>
         )}
-        <ProjectTag project={project} />
+        <ProjectTags projects={taskProjects} />
         {task.types.map((t) => <span key={t} className="studio-chip">{t}</span>)}
         <DifficultyBadge id={task.difficulte} />
       </div>
@@ -65,6 +65,7 @@ export default function TaskCard({
           <AvatarStack designers={assigned} size={24} />
           <span style={{ fontSize: 12, fontFamily: "var(--font-mono)", color: "var(--text-secondary)" }}>
             {share === charge ? `${charge}j` : `${share}j / ${charge}j`}
+            {task.charge_reelle > 0 && ` · ${roundCharge(task.charge_reelle)}j réel`}
           </span>
         </div>
         <div

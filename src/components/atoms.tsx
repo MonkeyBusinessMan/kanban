@@ -44,6 +44,16 @@ export function ProjectTag({ project }: { project?: Project | null }) {
   );
 }
 
+export function ProjectTags({ projects }: { projects: (Project | undefined | null)[] }) {
+  const valid = projects.filter((p): p is Project => !!p);
+  if (valid.length === 0) return null;
+  return (
+    <>
+      {valid.map((p) => <ProjectTag key={p.id} project={p} />)}
+    </>
+  );
+}
+
 export function PriorityDot({ id }: { id: PrioriteId }) {
   const p = PRIORITIES.find((x) => x.id === id) || PRIORITIES[1];
   return <span className="studio-dot" style={{ background: p.color }} />;

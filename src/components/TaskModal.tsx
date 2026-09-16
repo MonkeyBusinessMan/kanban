@@ -39,8 +39,8 @@ export default function TaskModal({
   readOnly: boolean;
 }) {
   const blank: TaskDraft = {
-    titre: "", chef: "", types: [], designer_ids: [], difficulte: null,
-    projet_id: projects[0]?.id ?? null, charge: 1, date_livraison: toISODate(new Date()),
+    titre: "", chef: "", types: [], designer_ids: [], projet_ids: [], difficulte: null,
+    projet_id: null, charge: 1, charge_reelle: 0, date_livraison: toISODate(new Date()),
     sprint: null, sprint_debut: null, is_epic: false, epic_id: null, priorite: "moyenne", statut: "backlog", notes: "",
   };
   const [form, setForm] = useState<TaskDraft>(() => {
@@ -55,7 +55,7 @@ export default function TaskModal({
   const [draggedSubtaskId, setDraggedSubtaskId] = useState<string | null>(null);
 
   const set = <K extends keyof TaskDraft>(k: K, v: TaskDraft[K]) => setForm((f) => ({ ...f, [k]: v }));
-  const toggleIn = (k: "types" | "designer_ids", id: string) => {
+  const toggleIn = (k: "types" | "designer_ids" | "projet_ids", id: string) => {
     setForm((f) => ({ ...f, [k]: f[k].includes(id) ? f[k].filter((x) => x !== id) : [...f[k], id] }));
   };
 
@@ -63,7 +63,7 @@ export default function TaskModal({
     const name = newProjectName.trim();
     if (!name) { setAddingProject(false); return; }
     const id = await onAddProject(name);
-    set("projet_id", id);
+    setForm((f) => ({ ...f, projet_ids: [...f.projet_ids, id] }));
     setNewProjectName("");
     setAddingProject(false);
   };
@@ -115,12 +115,16 @@ export default function TaskModal({
         <form id="task-form" onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         <fieldset disabled={readOnly} style={{ border: "none", padding: 0, margin: 0, display: "contents" }}>
           <label className="studio-field">
-            <span>Projet</span>
+            <span>Projet(s)</span>
             {!addingProject ? (
-              <div style={{ display: "flex", gap: 8 }}>
-                <select style={{ flex: 1 }} value={form.projet_id ?? ""} onChange={(e) => set("projet_id", e.target.value || null)}>
-                  {[...projects].sort((a, b) => a.name.localeCompare(b.name, "fr")).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-                </select>
+              <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                <div style={{ flex: 1 }}>
+                  <MultiSelect
+                    options={[...projects].sort((a, b) => a.name.localeCompare(b.name, "fr")).map((p) => ({ id: p.id, label: p.name, color: p.color }))}
+                    selected={form.projet_ids}
+                    onToggle={(id) => toggleIn("projet_ids", id)}
+                  />
+                </div>
                 <button type="button" onClick={() => setAddingProject(true)} className="studio-icon-btn" title="Ajouter un projet">
                   <Plus size={15} />
                 </button>
@@ -190,10 +194,14 @@ export default function TaskModal({
             />
           </label>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 12 }}>
             <label className="studio-field">
               <span>Charge (jours)</span>
               <input type="number" min={0.5} step={0.5} value={form.charge} onChange={(e) => set("charge", parseFloat(e.target.value) || 0)} />
+            </label>
+            <label className="studio-field">
+              <span>Charge réelle (jours)</span>
+              <input type="number" min={0} step={0.5} value={form.charge_reelle} onChange={(e) => set("charge_reelle", parseFloat(e.target.value) || 0)} />
             </label>
             <label className="studio-field">
               <span>Date de livraison</span>

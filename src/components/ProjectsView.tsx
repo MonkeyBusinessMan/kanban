@@ -46,7 +46,7 @@ export default function ProjectsView({
       id: p.id,
       name: p.name,
       color: p.color,
-      count: tasks.filter((t) => t.projet_id === p.id).length,
+      count: tasks.filter((t) => t.projet_ids.includes(p.id)).length,
     })),
     [sortedProjects, tasks]
   );
@@ -165,7 +165,7 @@ export default function ProjectsView({
               <div className="studio-empty-col">{readOnly ? "Aucun projet." : "Glisse un projet ici pour lui donner cette priorité."}</div>
             )}
             {items.map((p) => {
-              const pTasks = tasks.filter((t) => t.projet_id === p.id);
+              const pTasks = tasks.filter((t) => t.projet_ids.includes(p.id));
               const active = pTasks.filter((t) => t.statut !== "livre");
               const charge = roundCharge(active.reduce((s, t) => s + (t.charge || 0), 0));
               const involved = [...new Set(active.flatMap((t) => t.designer_ids))]
@@ -235,7 +235,7 @@ export default function ProjectsView({
         return (
           <ProjectPanel
             project={project}
-            tasks={tasks.filter((t) => t.projet_id === project.id)}
+            tasks={tasks.filter((t) => t.projet_ids.includes(project.id))}
             designers={designers}
             onClose={() => setOpenProjectId(null)}
             onEditTask={(t) => { setOpenProjectId(null); onEdit(t); }}
