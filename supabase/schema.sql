@@ -29,6 +29,7 @@ create table if not exists tasks (
   difficulte text,
   projet_id uuid references projects(id) on delete set null,
   charge numeric not null default 1,
+  charge_reelle numeric not null default 0,
   date_livraison date,
   sprint date,
   sprint_debut date,
@@ -47,6 +48,15 @@ create table if not exists task_designers (
   task_id uuid not null references tasks(id) on delete cascade,
   designer_id uuid not null references designers(id) on delete cascade,
   primary key (task_id, designer_id)
+);
+
+-- Un ticket peut être associé à plusieurs projets. "tasks.projet_id" reste
+-- en base comme repli (utilisé par le formulaire public demande-form, qui
+-- ne gère qu'un seul projet) pour les tickets sans ligne ici.
+create table if not exists task_projects (
+  task_id uuid not null references tasks(id) on delete cascade,
+  projet_id uuid not null references projects(id) on delete cascade,
+  primary key (task_id, projet_id)
 );
 
 -- Sous-tâches d'une tâche : cochées/non cochées, alimentent la barre de progression.
@@ -134,6 +144,7 @@ alter table designers enable row level security;
 alter table projects enable row level security;
 alter table tasks enable row level security;
 alter table task_designers enable row level security;
+alter table task_projects enable row level security;
 alter table subtasks enable row level security;
 alter table meetings enable row level security;
 
@@ -163,6 +174,11 @@ create policy "authenticated insert task_designers" on task_designers for insert
 create policy "authenticated update task_designers" on task_designers for update using (is_editor());
 create policy "authenticated delete task_designers" on task_designers for delete using (is_editor());
 
+create policy "authenticated read task_projects" on task_projects for select using (auth.role() = 'authenticated');
+create policy "authenticated insert task_projects" on task_projects for insert with check (is_editor());
+create policy "authenticated update task_projects" on task_projects for update using (is_editor());
+create policy "authenticated delete task_projects" on task_projects for delete using (is_editor());
+
 -- Fonction SECURITY DEFINER : vérifie qu'une tâche est en Backlog sans
 -- exposer ses données (utilisée par la policy anon ci-dessous, le rôle
 -- anon n'ayant pas de policy SELECT sur "tasks").
@@ -191,7 +207,7 @@ create policy "authenticated update conges" on conges for update using (is_edito
 create policy "authenticated delete conges" on conges for delete using (is_editor());
 
 -- Realtime : pousser les changements de ces tables à tous les clients connectés.
-alter publication supabase_realtime add table designers, projects, tasks, task_designers, subtasks, meetings, conges;
+alter publication supabase_realtime add table designers, projects, tasks, task_designers, task_projects, subtasks, meetings, conges;
 
 -- Données de départ (idempotent : ne s'insère qu'une fois, table par table).
 insert into designers (name, color)

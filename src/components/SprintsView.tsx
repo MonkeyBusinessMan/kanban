@@ -46,7 +46,7 @@ export default function SprintsView({
       </div>
       <div className="studio-sprint-grid">
         {sprints.map((mondayISO) => {
-          const sprintTasks = tasks.filter((t) => taskSprints(t).includes(mondayISO) && (projetFilter === "all" || t.projet_id === projetFilter));
+          const sprintTasks = tasks.filter((t) => taskSprints(t).includes(mondayISO) && (projetFilter === "all" || t.projet_ids.includes(projetFilter)));
           const isCurrent = mondayISO === toISODate(getMonday(new Date()));
           return (
             <div key={mondayISO} className="studio-sprint-card">
@@ -64,7 +64,7 @@ export default function SprintsView({
 
               <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 14 }}>
                 {designers.map((d) => {
-                  const taskCharge = taskChargeForDesignerInSprint(tasks.filter((t) => projetFilter === "all" || t.projet_id === projetFilter), d.id, mondayISO);
+                  const taskCharge = taskChargeForDesignerInSprint(tasks.filter((t) => projetFilter === "all" || t.projet_ids.includes(projetFilter)), d.id, mondayISO);
                   const meetingCharge = meetingChargeForDesignerInSprint(meetings, d.id, mondayISO);
                   const congeCharge = congeChargeForDesignerInSprint(conges, d.id, mondayISO);
                   const capacity = effectiveCapacity(meetingCharge, congeCharge);
@@ -119,14 +119,18 @@ export default function SprintsView({
                 {sprintTasks.length === 0 && <div className="studio-empty-col">Aucune tâche planifiée</div>}
                 {sprintTasks.map((t) => {
                   const assigned = t.designer_ids.map((id) => designers.find((x) => x.id === id)).filter((x): x is Designer => !!x);
-                  const p = projects.find((x) => x.id === t.projet_id);
+                  const taskProjects = t.projet_ids.map((id) => projects.find((x) => x.id === id)).filter((x): x is Project => !!x);
                   return (
                     <div key={t.id} onClick={() => onEdit(t)} className="studio-sprint-row">
                       <PriorityDot id={t.priorite} />
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: 12.5, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.titre}</div>
                         <div style={{ display: "flex", gap: 6, alignItems: "center", marginTop: 1 }}>
-                          {p && <span style={{ fontSize: 10, color: p.color }}>{p.name}</span>}
+                          {taskProjects.length > 0 && (
+                            <span style={{ fontSize: 10, color: taskProjects[0].color }}>
+                              {taskProjects.map((p) => p.name).join(", ")}
+                            </span>
+                          )}
                           {mondayISO !== t.sprint && <span style={{ fontSize: 9.5, color: "var(--ink-soft)", fontStyle: "italic" }}>sur plusieurs sprints</span>}
                         </div>
                       </div>

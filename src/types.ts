@@ -23,6 +23,7 @@ export interface TaskRow {
   difficulte: DifficulteId | null;
   projet_id: string | null;
   charge: number;
+  charge_reelle: number;
   date_livraison: string | null;
   sprint: string | null;
   sprint_debut: string | null;
@@ -60,10 +61,11 @@ export interface Conge {
 /** Une TaskRow enrichie côté client avec ses designers assignés et ses sous-tâches. */
 export interface Task extends TaskRow {
   designer_ids: string[];
+  projet_ids: string[];
   subtasks: Subtask[];
 }
 
-export type TaskDraft = Omit<TaskRow, "id"> & { id?: string; designer_ids: string[] };
+export type TaskDraft = Omit<TaskRow, "id"> & { id?: string; designer_ids: string[]; projet_ids: string[] };
 
 export interface Filters {
   designerId: string;

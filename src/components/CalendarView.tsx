@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { Designer, Project, Task } from "../types";
 import { STATUSES, PRIORITIES } from "../constants";
 import { getMonday } from "../dateUtils";
-import { Avatar, ProjectTag } from "./atoms";
+import { Avatar, ProjectTags } from "./atoms";
 
 const WEEKDAYS = ["L", "M", "M", "J", "V", "S", "D"];
 
@@ -95,9 +95,11 @@ function GanttChart({ tasks, projects, monthOffset }: { tasks: Task[]; projects:
   const PRIORITY_ORDER = PRIORITIES.map((p) => p.id);
   const byProject = new Map<string, Task[]>();
   rows.forEach((t) => {
-    const key = t.projet_id ?? "none";
-    if (!byProject.has(key)) byProject.set(key, []);
-    byProject.get(key)!.push(t);
+    const keys = t.projet_ids.length > 0 ? t.projet_ids : ["none"];
+    keys.forEach((key) => {
+      if (!byProject.has(key)) byProject.set(key, []);
+      byProject.get(key)!.push(t);
+    });
   });
   const projectGroups = Array.from(byProject.entries())
     .map(([key, items]) => ({ project: key === "none" ? null : projects.find((p) => p.id === key) ?? null, items }))
@@ -108,11 +110,11 @@ function GanttChart({ tasks, projects, monthOffset }: { tasks: Task[]; projects:
       return (a.project?.name ?? "Sans projet").localeCompare(b.project?.name ?? "Sans projet", "fr");
     });
 
-  type Entry = { kind: "group"; label: string; color: string } | { kind: "task"; task: Task };
+  type Entry = { kind: "group"; label: string; color: string } | { kind: "task"; task: Task; groupProject: Project | null };
   const entries: Entry[] = [];
   projectGroups.forEach(({ project, items }) => {
     entries.push({ kind: "group", label: project?.name ?? "Sans projet", color: project?.color ?? "var(--ink-soft)" });
-    items.forEach((t) => entries.push({ kind: "task", task: t }));
+    items.forEach((t) => entries.push({ kind: "task", task: t, groupProject: project }));
   });
 
   // Regroupe les jours du mois par semaine (lundi → dimanche) pour l'en-tête.
@@ -184,7 +186,7 @@ function GanttChart({ tasks, projects, monthOffset }: { tasks: Task[]; projects:
             );
           }
           const t = entry.task;
-          const project = projects.find((p) => p.id === t.projet_id);
+          const project = entry.groupProject;
           const prio = PRIORITIES.find((p) => p.id === t.priorite)!;
           const deliveryDay = new Date(t.date_livraison + "T00:00:00").getDate();
           const startCandidate = t.sprint_debut || t.sprint || t.date_livraison!;
@@ -260,7 +262,7 @@ export default function CalendarView({
             <div className="studio-calendar-list">
               {items.map((t) => {
                 const assigned = t.designer_ids.map((id) => designers.find((x) => x.id === id)).filter((x): x is Designer => !!x)[0];
-                const p = projects.find((x) => x.id === t.projet_id);
+                const taskProjects = t.projet_ids.map((id) => projects.find((x) => x.id === id)).filter((x): x is Project => !!x);
                 const prio = PRIORITIES.find((x) => x.id === t.priorite)!;
                 const date = new Date(t.date_livraison + "T00:00:00");
                 return (
@@ -279,7 +281,7 @@ export default function CalendarView({
                       <div style={{ fontSize: 11.5, color: "var(--ink-soft)", marginTop: 2 }}>
                         {[t.chef, t.types.join(", ")].filter(Boolean).join(" · ")}
                       </div>
-                      <div style={{ marginTop: 6 }}><ProjectTag project={p} /></div>
+                      <div style={{ marginTop: 6, display: "flex", flexWrap: "wrap", gap: 4 }}><ProjectTags projects={taskProjects} /></div>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <span className="studio-chip">{STATUSES.find((s) => s.id === t.statut)?.label}</span>

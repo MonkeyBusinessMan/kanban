@@ -74,7 +74,7 @@ export default function AllocationView({
 
       <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
         {mode === "projet" && sortedProjects.map((p) => {
-          const projectTasks = tasks.filter((t) => t.projet_id === p.id);
+          const projectTasks = tasks.filter((t) => t.projet_ids.includes(p.id));
 
           const byDesigner = new Map<string, Task[]>();
           const unassigned: Task[] = [];
@@ -132,9 +132,11 @@ export default function AllocationView({
 
           const byProject = new Map<string, Task[]>();
           designerTasks.forEach((t) => {
-            const key = t.projet_id ?? "none";
-            if (!byProject.has(key)) byProject.set(key, []);
-            byProject.get(key)!.push(t);
+            const keys = t.projet_ids.length > 0 ? t.projet_ids : ["none"];
+            keys.forEach((key) => {
+              if (!byProject.has(key)) byProject.set(key, []);
+              byProject.get(key)!.push(t);
+            });
           });
 
           const projectGroups = Array.from(byProject.entries())

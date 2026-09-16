@@ -23,7 +23,7 @@ export default function KanbanView({
   const todayISO = toISODate(new Date());
   const filtered = tasks.filter((t) => {
     if (filters.designerId !== "all" && !t.designer_ids.includes(filters.designerId)) return false;
-    if (filters.projetId !== "all" && t.projet_id !== filters.projetId) return false;
+    if (filters.projetId !== "all" && !t.projet_ids.includes(filters.projetId)) return false;
     if (filters.priorite !== "all" && t.priorite !== filters.priorite) return false;
     if (filters.epic === "epics" && !t.is_epic) return false;
     if (filters.epic === "non-epics" && t.is_epic) return false;
@@ -91,7 +91,7 @@ export default function KanbanView({
                     task={t}
                     allTasks={tasks}
                     designers={designers}
-                    project={projects.find((p) => p.id === t.projet_id)}
+                    taskProjects={t.projet_ids.map((id) => projects.find((p) => p.id === id)).filter((p): p is Project => !!p)}
                     onEdit={onEdit}
                     onDragStart={onDragStart}
                     readOnly={readOnly}

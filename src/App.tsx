@@ -28,6 +28,7 @@ const TABS: { id: ViewId; label: string; icon: typeof LayoutGrid }[] = [
 ];
 
 interface TaskDesignerLink { task_id: string; designer_id: string; }
+interface TaskProjectLink { task_id: string; projet_id: string; }
 
 function upsertById<T extends { id: string }>(list: T[], row: T): T[] {
   const idx = list.findIndex((x) => x.id === row.id);
@@ -49,6 +50,7 @@ export default function App() {
   const [dataLoading, setDataLoading] = useState(true);
   const [taskRows, setTaskRows] = useState<TaskRow[]>([]);
   const [taskDesignerLinks, setTaskDesignerLinks] = useState<TaskDesignerLink[]>([]);
+  const [taskProjectLinks, setTaskProjectLinks] = useState<TaskProjectLink[]>([]);
   const [subtasks, setSubtasks] = useState<Subtask[]>([]);
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [conges, setConges] = useState<Conge[]>([]);
@@ -77,6 +79,7 @@ export default function App() {
         { data: p, error: pErr },
         { data: t, error: tErr },
         { data: td, error: tdErr },
+        { data: tp, error: tpErr },
         { data: st, error: stErr },
         { data: mt, error: mtErr },
         { data: cg, error: cgErr },
@@ -86,18 +89,20 @@ export default function App() {
         supabase.from("projects").select("*").order("created_at"),
         supabase.from("tasks").select("*").order("created_at"),
         supabase.from("task_designers").select("*"),
+        supabase.from("task_projects").select("*"),
         supabase.from("subtasks").select("*").order("position"),
         supabase.from("meetings").select("*"),
         supabase.from("conges").select("*"),
         supabase.from("profiles").select("role").eq("id", session.user.id).maybeSingle(),
       ]);
       if (cancelled) return;
-      const err = dErr || pErr || tErr || tdErr || stErr || mtErr || cgErr;
+      const err = dErr || pErr || tErr || tdErr || tpErr || stErr || mtErr || cgErr;
       if (err) setErrorMsg(err.message);
       setDesigners(d ?? []);
       setProjects(p ?? []);
       setTaskRows((t ?? []) as TaskRow[]);
       setTaskDesignerLinks((td ?? []) as TaskDesignerLink[]);
+      setTaskProjectLinks((tp ?? []) as TaskProjectLink[]);
       setSubtasks((st ?? []) as Subtask[]);
       setMeetings((mt ?? []) as Meeting[]);
       setConges((cg ?? []) as Conge[]);
@@ -129,6 +134,15 @@ export default function App() {
           setTaskDesignerLinks((cur) => (cur.some((l) => l.task_id === row.task_id && l.designer_id === row.designer_id) ? cur : [...cur, row]));
         }
       })
+      .on("postgres_changes", { event: "*", schema: "public", table: "task_projects" }, (payload) => {
+        if (payload.eventType === "DELETE") {
+          const old = payload.old as TaskProjectLink;
+          setTaskProjectLinks((cur) => cur.filter((l) => !(l.task_id === old.task_id && l.projet_id === old.projet_id)));
+        } else {
+          const row = payload.new as TaskProjectLink;
+          setTaskProjectLinks((cur) => (cur.some((l) => l.task_id === row.task_id && l.projet_id === row.projet_id) ? cur : [...cur, row]));
+        }
+      })
       .on("postgres_changes", { event: "*", schema: "public", table: "subtasks" }, (payload) => {
         if (payload.eventType === "DELETE") setSubtasks((cur) => removeById(cur, (payload.old as Subtask).id));
         else setSubtasks((cur) => upsertById(cur, payload.new as Subtask));
@@ -147,12 +161,18 @@ export default function App() {
   }, [session]);
 
   const tasks: Task[] = useMemo(() => {
-    return taskRows.map((row) => ({
-      ...row,
-      designer_ids: taskDesignerLinks.filter((l) => l.task_id === row.id).map((l) => l.designer_id),
-      subtasks: subtasks.filter((s) => s.task_id === row.id),
-    }));
-  }, [taskRows, taskDesignerLinks, subtasks]);
+    return taskRows.map((row) => {
+      const projectLinks = taskProjectLinks.filter((l) => l.task_id === row.id).map((l) => l.projet_id);
+      return {
+        ...row,
+        designer_ids: taskDesignerLinks.filter((l) => l.task_id === row.id).map((l) => l.designer_id),
+        // Repli sur l'ancien champ projet_id unique (tâches créées par demande-form,
+        // ou avant l'ajout de task_projects) quand aucune ligne n'existe encore.
+        projet_ids: projectLinks.length > 0 ? projectLinks : row.projet_id ? [row.projet_id] : [],
+        subtasks: subtasks.filter((s) => s.task_id === row.id),
+      };
+    });
+  }, [taskRows, taskDesignerLinks, taskProjectLinks, subtasks]);
 
   const modalTask = modalTaskId ? tasks.find((t) => t.id === modalTaskId) ?? null : null;
   const showModal = creatingTask || modalTaskId !== null;
@@ -180,10 +200,14 @@ export default function App() {
     if (error) { setErrorMsg(error.message); return; }
     setProjects((cur) => cur.map((p) => (p.id === id ? { ...p, priorite } : p)));
 
-    const { error: tasksError } = await supabase.from("tasks").update({ priorite }).eq("projet_id", id);
+    const affectedIds = new Set(taskProjectLinks.filter((l) => l.projet_id === id).map((l) => l.task_id));
+    taskRows.forEach((t) => { if (t.projet_id === id) affectedIds.add(t.id); });
+    if (affectedIds.size === 0) return;
+    const ids = [...affectedIds];
+    const { error: tasksError } = await supabase.from("tasks").update({ priorite }).in("id", ids);
     if (tasksError) { setErrorMsg(tasksError.message); return; }
-    setTaskRows((cur) => cur.map((t) => (t.projet_id === id ? { ...t, priorite } : t)));
-  }, [readOnly]);
+    setTaskRows((cur) => cur.map((t) => (affectedIds.has(t.id) ? { ...t, priorite } : t)));
+  }, [readOnly, taskProjectLinks, taskRows]);
 
   const renameDesigner = useCallback(async (id: string, name: string) => {
     if (readOnly) return;
@@ -203,16 +227,28 @@ export default function App() {
     setTaskDesignerLinks((cur) => [...cur, ...((data ?? []) as TaskDesignerLink[])]);
   }, []);
 
+  const syncTaskProjects = useCallback(async (taskId: string, projetIds: string[]) => {
+    const { error: delErr } = await supabase.from("task_projects").delete().eq("task_id", taskId);
+    if (delErr) { setErrorMsg(delErr.message); return; }
+    setTaskProjectLinks((cur) => cur.filter((l) => l.task_id !== taskId));
+    if (projetIds.length === 0) return;
+    const rows = projetIds.map((projet_id) => ({ task_id: taskId, projet_id }));
+    const { data, error } = await supabase.from("task_projects").insert(rows).select();
+    if (error) { setErrorMsg(error.message); return; }
+    setTaskProjectLinks((cur) => [...cur, ...((data ?? []) as TaskProjectLink[])]);
+  }, []);
+
   const saveTask = useCallback(async (draft: TaskDraft) => {
     if (readOnly) return;
-    const { id, designer_ids } = draft;
+    const { id, designer_ids, projet_ids } = draft;
     const rest: Omit<TaskRow, "id"> = {
       titre: draft.titre,
       chef: draft.chef,
       types: draft.types,
       difficulte: draft.difficulte,
-      projet_id: draft.projet_id,
+      projet_id: projet_ids[0] ?? null,
       charge: draft.charge,
+      charge_reelle: draft.charge_reelle,
       date_livraison: draft.date_livraison,
       sprint: draft.sprint,
       sprint_debut: draft.sprint_debut,
@@ -227,17 +263,19 @@ export default function App() {
       if (error) { setErrorMsg(error.message); return; }
       setTaskRows((cur) => upsertById(cur, data as TaskRow));
       await syncTaskDesigners(id, designer_ids);
+      await syncTaskProjects(id, projet_ids);
     } else {
       const { data, error } = await supabase.from("tasks").insert(rest).select().single();
       if (error) { setErrorMsg(error.message); return; }
       const newTask = data as TaskRow;
       setTaskRows((cur) => upsertById(cur, newTask));
       await syncTaskDesigners(newTask.id, designer_ids);
+      await syncTaskProjects(newTask.id, projet_ids);
       await createDefaultSubtasks(newTask.id);
     }
     setCreatingTask(false);
     setModalTaskId(null);
-  }, [syncTaskDesigners, readOnly]);
+  }, [syncTaskDesigners, syncTaskProjects, readOnly]);
 
   const deleteTask = useCallback(async (id: string) => {
     if (readOnly) return;
