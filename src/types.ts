@@ -42,6 +42,14 @@ export interface Subtask {
   position: number;
 }
 
+export interface Attachment {
+  id: string;
+  task_id: string;
+  label: string;
+  url: string;
+  position: number;
+}
+
 export interface Meeting {
   id: string;
   designer_id: string;
@@ -63,6 +71,7 @@ export interface Task extends TaskRow {
   designer_ids: string[];
   projet_ids: string[];
   subtasks: Subtask[];
+  attachments: Attachment[];
 }
 
 export type TaskDraft = Omit<TaskRow, "id"> & { id?: string; designer_ids: string[]; projet_ids: string[] };
