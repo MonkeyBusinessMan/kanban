@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { GripVertical, Plus, Trash2, X } from "lucide-react";
+import { ExternalLink, GripVertical, Paperclip, Plus, Trash2, X } from "lucide-react";
 import type { Designer, DifficulteId, PrioriteId, Project, StatusId, Task, TaskDraft } from "../types";
 import { DIFFICULTIES, PRIORITIES, STATUSES, TYPES } from "../constants";
 import { sprintKeyFor, toISODate } from "../dateUtils";
@@ -20,6 +20,8 @@ export default function TaskModal({
   onToggleSubtask,
   onDeleteSubtask,
   onReorderSubtasks,
+  onAddAttachment,
+  onDeleteAttachment,
   onOpenTask,
   readOnly,
 }: {
@@ -35,6 +37,8 @@ export default function TaskModal({
   onToggleSubtask: (id: string, fait: boolean) => void;
   onDeleteSubtask: (id: string) => void;
   onReorderSubtasks: (orderedIds: string[]) => void;
+  onAddAttachment: (taskId: string, label: string, url: string) => void;
+  onDeleteAttachment: (id: string) => void;
   onOpenTask: (task: Task) => void;
   readOnly: boolean;
 }) {
@@ -51,6 +55,8 @@ export default function TaskModal({
   const [addingProject, setAddingProject] = useState(false);
   const [newProjectName, setNewProjectName] = useState("");
   const [newSubtask, setNewSubtask] = useState("");
+  const [newAttachmentLabel, setNewAttachmentLabel] = useState("");
+  const [newAttachmentUrl, setNewAttachmentUrl] = useState("");
   const [saving, setSaving] = useState(false);
   const [draggedSubtaskId, setDraggedSubtaskId] = useState<string | null>(null);
 
@@ -83,6 +89,15 @@ export default function TaskModal({
     if (!titre || !initial) return;
     onAddSubtask(initial.id, titre);
     setNewSubtask("");
+  };
+
+  const addAttachment = () => {
+    const url = newAttachmentUrl.trim();
+    if (!url || !initial) return;
+    const label = newAttachmentLabel.trim() || url;
+    onAddAttachment(initial.id, label, url);
+    setNewAttachmentLabel("");
+    setNewAttachmentUrl("");
   };
 
   const dropSubtask = (targetId: string) => {
@@ -305,6 +320,49 @@ export default function TaskModal({
                     style={{ flex: 1 }}
                   />
                   <button type="button" className="studio-icon-btn" onClick={addSubtask}><Plus size={15} /></button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="studio-field">
+            <span>Pièces jointes (liens){initial && initial.attachments.length > 0 ? ` (${initial.attachments.length})` : ""}</span>
+            {!initial ? (
+              <div className="studio-empty-col" style={{ padding: "8px 0" }}>Enregistre la tâche pour ajouter des pièces jointes.</div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {initial.attachments.slice().sort((a, b) => a.position - b.position).map((a) => (
+                  <div key={a.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <Paperclip size={14} color="var(--line)" style={{ flexShrink: 0 }} />
+                    <a
+                      href={a.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{ flex: 1, fontSize: 13, color: "var(--accent)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "inline-flex", alignItems: "center", gap: 4 }}
+                    >
+                      {a.label} <ExternalLink size={11} style={{ flexShrink: 0 }} />
+                    </a>
+                    <button type="button" className="studio-icon-btn" style={{ width: 24, height: 24 }} onClick={() => onDeleteAttachment(a.id)}>
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                ))}
+                <div style={{ display: "flex", gap: 8 }}>
+                  <input
+                    placeholder="Nom (optionnel)"
+                    value={newAttachmentLabel}
+                    onChange={(e) => setNewAttachmentLabel(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addAttachment(); } }}
+                    style={{ flex: "0 0 40%" }}
+                  />
+                  <input
+                    placeholder="URL SharePoint…"
+                    value={newAttachmentUrl}
+                    onChange={(e) => setNewAttachmentUrl(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addAttachment(); } }}
+                    style={{ flex: 1 }}
+                  />
+                  <button type="button" className="studio-icon-btn" onClick={addAttachment}><Plus size={15} /></button>
                 </div>
               </div>
             )}

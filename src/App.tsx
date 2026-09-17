@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { CalendarDays, FolderKanban, GripVertical, LayoutGrid, LogOut, Plus, Table2, Users } from "lucide-react";
 import { supabase } from "./supabaseClient";
-import type { Conge, Designer, Filters, Meeting, PrioriteId, Project, StatusId, Subtask, Task, TaskDraft, TaskRow } from "./types";
+import type { Attachment, Conge, Designer, Filters, Meeting, PrioriteId, Project, StatusId, Subtask, Task, TaskDraft, TaskRow } from "./types";
 import { PROJECT_COLORS } from "./constants";
 import { applyTheme, getInitialTheme, type Theme } from "./theme";
 import { createDefaultSubtasks } from "./subtaskGenerator";
@@ -52,6 +52,7 @@ export default function App() {
   const [taskDesignerLinks, setTaskDesignerLinks] = useState<TaskDesignerLink[]>([]);
   const [taskProjectLinks, setTaskProjectLinks] = useState<TaskProjectLink[]>([]);
   const [subtasks, setSubtasks] = useState<Subtask[]>([]);
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [conges, setConges] = useState<Conge[]>([]);
   const [designers, setDesigners] = useState<Designer[]>([]);
@@ -81,6 +82,7 @@ export default function App() {
         { data: td, error: tdErr },
         { data: tp, error: tpErr },
         { data: st, error: stErr },
+        { data: at, error: atErr },
         { data: mt, error: mtErr },
         { data: cg, error: cgErr },
         { data: pr, error: prErr },
@@ -91,12 +93,13 @@ export default function App() {
         supabase.from("task_designers").select("*"),
         supabase.from("task_projects").select("*"),
         supabase.from("subtasks").select("*").order("position"),
+        supabase.from("task_attachments").select("*").order("position"),
         supabase.from("meetings").select("*"),
         supabase.from("conges").select("*"),
         supabase.from("profiles").select("role").eq("id", session.user.id).maybeSingle(),
       ]);
       if (cancelled) return;
-      const err = dErr || pErr || tErr || tdErr || tpErr || stErr || mtErr || cgErr;
+      const err = dErr || pErr || tErr || tdErr || tpErr || stErr || atErr || mtErr || cgErr;
       if (err) setErrorMsg(err.message);
       setDesigners(d ?? []);
       setProjects(p ?? []);
@@ -104,6 +107,7 @@ export default function App() {
       setTaskDesignerLinks((td ?? []) as TaskDesignerLink[]);
       setTaskProjectLinks((tp ?? []) as TaskProjectLink[]);
       setSubtasks((st ?? []) as Subtask[]);
+      setAttachments((at ?? []) as Attachment[]);
       setMeetings((mt ?? []) as Meeting[]);
       setConges((cg ?? []) as Conge[]);
       // Pas de ligne "profiles" ou erreur → lecture seule par défaut, par sécurité.
@@ -147,6 +151,10 @@ export default function App() {
         if (payload.eventType === "DELETE") setSubtasks((cur) => removeById(cur, (payload.old as Subtask).id));
         else setSubtasks((cur) => upsertById(cur, payload.new as Subtask));
       })
+      .on("postgres_changes", { event: "*", schema: "public", table: "task_attachments" }, (payload) => {
+        if (payload.eventType === "DELETE") setAttachments((cur) => removeById(cur, (payload.old as Attachment).id));
+        else setAttachments((cur) => upsertById(cur, payload.new as Attachment));
+      })
       .on("postgres_changes", { event: "*", schema: "public", table: "meetings" }, (payload) => {
         if (payload.eventType === "DELETE") setMeetings((cur) => removeById(cur, (payload.old as Meeting).id));
         else setMeetings((cur) => upsertById(cur, payload.new as Meeting));
@@ -170,9 +178,10 @@ export default function App() {
         // ou avant l'ajout de task_projects) quand aucune ligne n'existe encore.
         projet_ids: projectLinks.length > 0 ? projectLinks : row.projet_id ? [row.projet_id] : [],
         subtasks: subtasks.filter((s) => s.task_id === row.id),
+        attachments: attachments.filter((a) => a.task_id === row.id),
       };
     });
-  }, [taskRows, taskDesignerLinks, taskProjectLinks, subtasks]);
+  }, [taskRows, taskDesignerLinks, taskProjectLinks, subtasks, attachments]);
 
   const modalTask = modalTaskId ? tasks.find((t) => t.id === modalTaskId) ?? null : null;
   const showModal = creatingTask || modalTaskId !== null;
@@ -285,6 +294,7 @@ export default function App() {
       setTaskRows((cur) => removeById(cur, id));
       setTaskDesignerLinks((cur) => cur.filter((l) => l.task_id !== id));
       setSubtasks((cur) => cur.filter((s) => s.task_id !== id));
+      setAttachments((cur) => cur.filter((a) => a.task_id !== id));
     }
     setCreatingTask(false);
     setModalTaskId(null);
@@ -327,6 +337,21 @@ export default function App() {
       orderedIds.map((id, position) => supabase.from("subtasks").update({ position }).eq("id", id))
     ).then((results) => ({ error: results.find((r) => r.error)?.error ?? null }));
     if (error) setErrorMsg(error.message);
+  }, [readOnly]);
+
+  const addAttachment = useCallback(async (taskId: string, label: string, url: string) => {
+    if (readOnly) return;
+    const position = attachments.filter((a) => a.task_id === taskId).length;
+    const { data, error } = await supabase.from("task_attachments").insert({ task_id: taskId, label, url, position }).select().single();
+    if (error) { setErrorMsg(error.message); return; }
+    setAttachments((cur) => upsertById(cur, data as Attachment));
+  }, [attachments, readOnly]);
+
+  const deleteAttachment = useCallback(async (id: string) => {
+    if (readOnly) return;
+    const { error } = await supabase.from("task_attachments").delete().eq("id", id);
+    if (error) setErrorMsg(error.message);
+    else setAttachments((cur) => removeById(cur, id));
   }, [readOnly]);
 
   const setMeetingCharge = useCallback(async (designerId: string, sprint: string, charge: number) => {
@@ -469,6 +494,8 @@ export default function App() {
           onToggleSubtask={toggleSubtask}
           onDeleteSubtask={deleteSubtask}
           onReorderSubtasks={reorderSubtasks}
+          onAddAttachment={addAttachment}
+          onDeleteAttachment={deleteAttachment}
           onOpenTask={openEdit}
           readOnly={readOnly}
         />

@@ -1,4 +1,4 @@
-import { AlertTriangle, GripVertical, Layers } from "lucide-react";
+import { AlertTriangle, GripVertical, Layers, Paperclip } from "lucide-react";
 import type { Designer, Project, Task } from "../types";
 import { PRIORITIES } from "../constants";
 import { fmtShort } from "../dateUtils";
@@ -77,6 +77,11 @@ export default function TaskCard({
         >
           {overdue && <AlertTriangle size={11} />}
           {fmtShort(task.date_livraison)}
+          {task.attachments.length > 0 && (
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 2 }}>
+              <Paperclip size={11} /> {task.attachments.length}
+            </span>
+          )}
         </div>
       </div>
     </div>

@@ -69,6 +69,17 @@ create table if not exists subtasks (
   created_at timestamptz not null default now()
 );
 
+-- Pièces jointes : liens vers des documents stockés ailleurs (SharePoint
+-- d'équipe, etc.) — pas de stockage de fichiers côté Kanban.
+create table if not exists task_attachments (
+  id uuid primary key default gen_random_uuid(),
+  task_id uuid not null references tasks(id) on delete cascade,
+  label text not null,
+  url text not null,
+  position int not null default 0,
+  created_at timestamptz not null default now()
+);
+
 -- Réunions d'un designer sur un sprint donné : réduisent sa capacité disponible
 -- (5j/semaine de référence) dans les vues Sprints et Équipe.
 create table if not exists meetings (
@@ -146,6 +157,7 @@ alter table tasks enable row level security;
 alter table task_designers enable row level security;
 alter table task_projects enable row level security;
 alter table subtasks enable row level security;
+alter table task_attachments enable row level security;
 alter table meetings enable row level security;
 
 create policy "authenticated read designers" on designers for select using (auth.role() = 'authenticated');
@@ -195,6 +207,11 @@ create policy "authenticated update subtasks" on subtasks for update using (is_e
 create policy "authenticated delete subtasks" on subtasks for delete using (is_editor());
 create policy "anon insert subtasks on backlog tasks" on subtasks for insert to anon with check (is_backlog_task(task_id));
 
+create policy "authenticated read task_attachments" on task_attachments for select using (auth.role() = 'authenticated');
+create policy "authenticated insert task_attachments" on task_attachments for insert with check (is_editor());
+create policy "authenticated update task_attachments" on task_attachments for update using (is_editor());
+create policy "authenticated delete task_attachments" on task_attachments for delete using (is_editor());
+
 create policy "authenticated read meetings" on meetings for select using (auth.role() = 'authenticated');
 create policy "authenticated insert meetings" on meetings for insert with check (is_editor());
 create policy "authenticated update meetings" on meetings for update using (is_editor());
@@ -207,7 +224,7 @@ create policy "authenticated update conges" on conges for update using (is_edito
 create policy "authenticated delete conges" on conges for delete using (is_editor());
 
 -- Realtime : pousser les changements de ces tables à tous les clients connectés.
-alter publication supabase_realtime add table designers, projects, tasks, task_designers, task_projects, subtasks, meetings, conges;
+alter publication supabase_realtime add table designers, projects, tasks, task_designers, task_projects, subtasks, task_attachments, meetings, conges;
 
 -- Données de départ (idempotent : ne s'insère qu'une fois, table par table).
 insert into designers (name, color)
