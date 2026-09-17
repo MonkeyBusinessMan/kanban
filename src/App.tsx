@@ -6,6 +6,7 @@ import type { Attachment, Conge, Designer, Filters, Meeting, PrioriteId, Project
 import { PROJECT_COLORS } from "./constants";
 import { applyTheme, getInitialTheme, type Theme } from "./theme";
 import { createDefaultSubtasks } from "./subtaskGenerator";
+import { sprintKeyFor, toISODate } from "./dateUtils";
 import Auth from "./components/Auth";
 import ThemeToggle from "./components/ThemeToggle";
 import TaskModal from "./components/TaskModal";
@@ -247,6 +248,22 @@ export default function App() {
     setTaskProjectLinks((cur) => [...cur, ...((data ?? []) as TaskProjectLink[])]);
   }, []);
 
+  const addEpic = useCallback(async (titre: string, projetIds: string[]): Promise<string> => {
+    if (readOnly) throw new Error("Lecture seule");
+    const rest: Omit<TaskRow, "id"> = {
+      titre, chef: "", types: [], difficulte: null, projet_id: projetIds[0] ?? null,
+      charge: 1, charge_reelle: 0, date_livraison: toISODate(new Date()),
+      sprint: sprintKeyFor(toISODate(new Date())), sprint_debut: null,
+      is_epic: true, epic_id: null, priorite: "moyenne", statut: "backlog", notes: "",
+    };
+    const { data, error } = await supabase.from("tasks").insert(rest).select().single();
+    if (error) { setErrorMsg(error.message); throw error; }
+    const newTask = data as TaskRow;
+    setTaskRows((cur) => upsertById(cur, newTask));
+    await syncTaskProjects(newTask.id, projetIds);
+    return newTask.id;
+  }, [readOnly, syncTaskProjects]);
+
   const saveTask = useCallback(async (draft: TaskDraft) => {
     if (readOnly) return;
     const { id, designer_ids, projet_ids } = draft;
@@ -487,6 +504,7 @@ export default function App() {
           designers={designers}
           projects={projects}
           onAddProject={addProject}
+          onAddEpic={addEpic}
           onClose={closeModal}
           onSave={saveTask}
           onDelete={deleteTask}

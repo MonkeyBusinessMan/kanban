@@ -13,6 +13,7 @@ export default function TaskModal({
   designers,
   projects,
   onAddProject,
+  onAddEpic,
   onClose,
   onSave,
   onDelete,
@@ -30,6 +31,7 @@ export default function TaskModal({
   designers: Designer[];
   projects: Project[];
   onAddProject: (name: string) => Promise<string>;
+  onAddEpic: (titre: string, projetIds: string[]) => Promise<string>;
   onClose: () => void;
   onSave: (draft: TaskDraft) => void;
   onDelete: (id: string) => void;
@@ -54,6 +56,8 @@ export default function TaskModal({
   });
   const [addingProject, setAddingProject] = useState(false);
   const [newProjectName, setNewProjectName] = useState("");
+  const [addingEpic, setAddingEpic] = useState(false);
+  const [newEpicName, setNewEpicName] = useState("");
   const [newSubtask, setNewSubtask] = useState("");
   const [newAttachmentLabel, setNewAttachmentLabel] = useState("");
   const [newAttachmentUrl, setNewAttachmentUrl] = useState("");
@@ -72,6 +76,15 @@ export default function TaskModal({
     setForm((f) => ({ ...f, projet_ids: [...f.projet_ids, id] }));
     setNewProjectName("");
     setAddingProject(false);
+  };
+
+  const confirmNewEpic = async () => {
+    const titre = newEpicName.trim();
+    if (!titre) { setAddingEpic(false); return; }
+    const id = await onAddEpic(titre, form.projet_ids);
+    set("epic_id", id);
+    setNewEpicName("");
+    setAddingEpic(false);
   };
 
   const submit = async (e: React.FormEvent) => {
@@ -161,30 +174,68 @@ export default function TaskModal({
             )}
           </label>
 
-          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--ink)" }}>
-            <input
-              type="checkbox"
-              checked={form.is_epic}
-              onChange={(e) => set("is_epic", e.target.checked)}
-            />
-            Ceci est un epic (regroupe d'autres tickets)
+          <label className="studio-field">
+            <span>Type de ticket</span>
+            <div className="studio-multiselect">
+              <button
+                type="button"
+                className={`studio-multiselect-chip ${!form.is_epic ? "active" : ""}`}
+                onClick={() => set("is_epic", false)}
+              >
+                Tâche
+              </button>
+              <button
+                type="button"
+                className={`studio-multiselect-chip ${form.is_epic ? "active" : ""}`}
+                onClick={() => { set("is_epic", true); set("epic_id", null); }}
+              >
+                Epic
+              </button>
+            </div>
           </label>
 
           {!form.is_epic && (
             <label className="studio-field">
-              <span>Epic parent (optionnel)</span>
+              <span>Epic (optionnel)</span>
               <select value={form.epic_id ?? ""} onChange={(e) => set("epic_id", e.target.value || null)}>
-                <option value="">Aucun</option>
-                {tasks.filter((t) => t.is_epic && t.id !== initial?.id).sort((a, b) => a.titre.localeCompare(b.titre, "fr")).map((e) => (
-                  <option key={e.id} value={e.id}>{e.titre}</option>
-                ))}
+                <option value="">Aucune</option>
+                {tasks
+                  .filter((t) => t.is_epic && t.id !== initial?.id)
+                  .filter((t) => form.projet_ids.length === 0 || t.projet_ids.some((id) => form.projet_ids.includes(id)))
+                  .sort((a, b) => a.titre.localeCompare(b.titre, "fr"))
+                  .map((e) => (
+                    <option key={e.id} value={e.id}>{e.titre}</option>
+                  ))}
               </select>
+              {!addingEpic ? (
+                <button
+                  type="button"
+                  onClick={() => setAddingEpic(true)}
+                  className="studio-btn-ghost"
+                  style={{ alignSelf: "flex-start", display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11.5, padding: "6px 10px", marginTop: 2 }}
+                >
+                  <Plus size={13} /> Nouvelle epic
+                </button>
+              ) : (
+                <div style={{ display: "flex", gap: 8, marginTop: 2 }}>
+                  <input
+                    autoFocus
+                    placeholder="Nom de la nouvelle epic"
+                    value={newEpicName}
+                    onChange={(e) => setNewEpicName(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); confirmNewEpic(); } if (e.key === "Escape") setAddingEpic(false); }}
+                    style={{ flex: 1 }}
+                  />
+                  <button type="button" onClick={confirmNewEpic} className="studio-btn-primary" style={{ padding: "8px 12px" }}>OK</button>
+                  <button type="button" onClick={() => { setAddingEpic(false); setNewEpicName(""); }} className="studio-icon-btn"><X size={15} /></button>
+                </div>
+              )}
             </label>
           )}
 
           <label className="studio-field">
-            <span>Intitulé de la tâche</span>
-            <input required value={form.titre} onChange={(e) => set("titre", e.target.value)} placeholder="Ex : Cadrage UX — espace client" />
+            <span>Intitulé {form.is_epic ? "de l'epic" : "de la tâche"}</span>
+            <input required value={form.titre} onChange={(e) => set("titre", e.target.value)} placeholder={form.is_epic ? "Ex : Wifi en gare" : "Ex : Maquettage des cas d'erreur"} />
           </label>
 
           <label className="studio-field">
