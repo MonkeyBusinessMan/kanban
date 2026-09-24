@@ -144,6 +144,24 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
 
+-- Accès réservé aux adresses e-mail de l'entreprise : toute autre adresse
+-- est rejetée à la création du compte (avant même l'envoi du code de
+-- connexion), quelle que soit la façon dont l'appel est fait.
+create or replace function public.enforce_cgi_email_domain()
+returns trigger as $$
+begin
+  if new.email is null or new.email !~* '@([a-z0-9-]+\.)*cgi\.com$' then
+    raise exception 'Adresse e-mail non autorisée : seules les adresses @cgi.com peuvent créer un compte.';
+  end if;
+  return new;
+end;
+$$ language plpgsql security definer set search_path = public;
+
+drop trigger if exists enforce_cgi_email_domain on auth.users;
+create trigger enforce_cgi_email_domain
+  before insert on auth.users
+  for each row execute function public.enforce_cgi_email_domain();
+
 create or replace function public.is_editor()
 returns boolean as $$
   select exists (

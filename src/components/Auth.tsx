@@ -14,6 +14,10 @@ export default function Auth({ theme, onToggleTheme }: { theme: Theme; onToggleT
   const requestCode = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    if (!/@([a-z0-9-]+\.)*cgi\.com$/i.test(email.trim())) {
+      setError("Seules les adresses e-mail se terminant par @cgi.com sont autorisées.");
+      return;
+    }
     setLoading(true);
     const { error } = await supabase.auth.signInWithOtp({ email });
     setLoading(false);
@@ -46,7 +50,7 @@ export default function Auth({ theme, onToggleTheme }: { theme: Theme; onToggleT
             <input
               type="email"
               required
-              placeholder="prenom@le-studio.fr"
+              placeholder="prenom@cgi.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
